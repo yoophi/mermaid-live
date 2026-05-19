@@ -1,0 +1,16 @@
+{
+  "name": "mermaid-live",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.10.0",
+  "scripts": {
+    "dev": "pnpm --filter @mermaid-live/desktop dev",
+    "build": "pnpm --filter @mermaid-live/desktop build",
+    "tauri": "pnpm --filter @mermaid-live/desktop tauri",
+    "lint": "pnpm --filter @mermaid-live/desktop lint",
+    "typecheck": "pnpm --filter @mermaid-live/desktop typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

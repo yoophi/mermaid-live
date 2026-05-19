@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.45rem;
+  --background: oklch(0.982 0.006 84);
+  --foreground: oklch(0.18 0.02 255);
+  --card: oklch(0.996 0.003 84);
+  --card-foreground: oklch(0.18 0.02 255);
+  --popover: oklch(0.996 0.003 84);
+  --popover-foreground: oklch(0.18 0.02 255);
+  --primary: oklch(0.38 0.05 205);
+  --primary-foreground: oklch(0.98 0.006 84);
+  --secondary: oklch(0.9 0.025 90);
+  --secondary-foreground: oklch(0.22 0.025 255);
+  --muted: oklch(0.93 0.015 92);
+  --muted-foreground: oklch(0.46 0.02 255);
+  --accent: oklch(0.77 0.14 68);
+  --accent-foreground: oklch(0.18 0.02 255);
+  --destructive: oklch(0.58 0.22 25);
+  --border: oklch(0.84 0.018 92);
+  --input: oklch(0.84 0.018 92);
+  --ring: oklch(0.38 0.05 205);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--border), transparent 55%) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in oklab, var(--border), transparent 62%) 1px, transparent 1px),
+    var(--background);
+  background-size: 28px 28px;
+  color: var(--foreground);
+  font-family:
+    "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.mermaid-preview svg {
+  height: auto;
+  max-width: 100%;
+}
