@@ -30,12 +30,12 @@
 
 :root {
   --radius: 0.45rem;
-  --background: oklch(0.982 0.006 84);
-  --foreground: oklch(0.18 0.02 255);
-  --card: oklch(0.996 0.003 84);
-  --card-foreground: oklch(0.18 0.02 255);
-  --popover: oklch(0.996 0.003 84);
-  --popover-foreground: oklch(0.18 0.02 255);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.38 0.05 205);
   --primary-foreground: oklch(0.98 0.006 84);
   --secondary: oklch(0.9 0.025 90);
@@ -62,14 +62,9 @@ body,
 
 body {
   margin: 0;
-  background:
-    linear-gradient(90deg, color-mix(in oklab, var(--border), transparent 55%) 1px, transparent 1px),
-    linear-gradient(180deg, color-mix(in oklab, var(--border), transparent 62%) 1px, transparent 1px),
-    var(--background);
-  background-size: 28px 28px;
+  background: var(--background);
   color: var(--foreground);
-  font-family:
-    "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-family: ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0;
 }
 
@@ -79,6 +74,8 @@ textarea {
 }
 
 .mermaid-preview svg {
-  height: auto;
-  max-width: 100%;
+  display: block;
+  height: 100%;
+  max-width: none;
+  width: 100%;
 }

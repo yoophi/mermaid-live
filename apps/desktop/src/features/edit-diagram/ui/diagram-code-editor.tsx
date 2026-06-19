@@ -55,7 +55,7 @@ export function DiagramCodeEditor({ value, onChange }: DiagramCodeEditorProps) {
             },
             ".cm-scroller": {
               fontFamily:
-                "'SFMono-Regular', 'Cascadia Code', 'Liberation Mono', monospace",
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
               lineHeight: "1.62",
               overflow: "auto",
             },

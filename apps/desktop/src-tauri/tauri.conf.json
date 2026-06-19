@@ -16,7 +16,8 @@
         "width": 1280,
         "height": 800,
         "minWidth": 960,
-        "minHeight": 620
+        "minHeight": 620,
+        "tabbingIdentifier": "mermaid-live-editor"
       }
     ],
     "security": {

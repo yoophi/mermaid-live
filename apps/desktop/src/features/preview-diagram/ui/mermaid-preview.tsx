@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Maximize2, Minus, Plus } from "lucide-react";
 import mermaid from "mermaid";
 import { Button } from "@/shared/ui/button";
@@ -21,31 +21,108 @@ interface MermaidPreviewProps {
   source: string;
 }
 
-const MIN_ZOOM = 0.25;
+const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
+const FIT_PADDING = 48;
 
 interface PanPosition {
   x: number;
   y: number;
 }
 
+interface Size {
+  width: number;
+  height: number;
+}
+
 function clampZoom(value: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+}
+
+function readSvgBaseSize(svgEl: SVGSVGElement): Size | null {
+  const viewBox = svgEl.viewBox.baseVal;
+  const width = viewBox.width > 0 ? viewBox.width : parseFloat(svgEl.getAttribute("width") ?? "");
+  const height =
+    viewBox.height > 0 ? viewBox.height : parseFloat(svgEl.getAttribute("height") ?? "");
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width, height };
+}
+
+function getElementSize(el: HTMLElement | null): Size | null {
+  if (!el) {
+    return null;
+  }
+
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null;
+  }
+
+  return { width: rect.width, height: rect.height };
+}
+
+function getFitZoom(baseSize: Size | null, viewportEl: HTMLElement | null) {
+  const viewportSize = getElementSize(viewportEl);
+  if (!baseSize || !viewportSize) {
+    return 1;
+  }
+
+  const availableWidth = Math.max(1, viewportSize.width - FIT_PADDING * 2);
+  const availableHeight = Math.max(1, viewportSize.height - FIT_PADDING * 2);
+
+  return clampZoom(Math.min(availableWidth / baseSize.width, availableHeight / baseSize.height));
 }
 
 export function MermaidPreview({ source }: MermaidPreviewProps) {
   const id = useId().replace(/:/g, "");
   const viewportRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef("");
+  const contentRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<PanPosition | null>(null);
+  const baseSizeRef = useRef<Size | null>(null);
   const [svg, setSvg] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [baseSize, setBaseSize] = useState<Size | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<PanPosition>({ x: 0, y: 0 });
-  const [dragStart, setDragStart] = useState<PanPosition | null>(null);
 
-  useEffect(() => {
-    svgRef.current = svg;
+  function measureBaseSize() {
+    const svgEl = contentRef.current?.querySelector("svg");
+    if (!svgEl) {
+      return null;
+    }
+
+    const nextBaseSize = readSvgBaseSize(svgEl);
+    if (nextBaseSize) {
+      baseSizeRef.current = nextBaseSize;
+    }
+    return nextBaseSize;
+  }
+
+  useLayoutEffect(() => {
+    if (!svg) {
+      baseSizeRef.current = null;
+      setBaseSize(null);
+      return;
+    }
+
+    const nextBaseSize = measureBaseSize();
+    if (!nextBaseSize) {
+      return;
+    }
+
+    const initialZoom = getFitZoom(nextBaseSize, viewportRef.current);
+    setBaseSize((current) =>
+      current?.width === nextBaseSize.width && current.height === nextBaseSize.height
+        ? current
+        : nextBaseSize,
+    );
+    setZoom((current) => (Math.abs(current - initialZoom) < 0.001 ? current : initialZoom));
+    setPan((current) => (current.x === 0 && current.y === 0 ? current : { x: 0, y: 0 }));
   }, [svg]);
 
   useEffect(() => {
@@ -58,6 +135,8 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
         if (!normalizedSource) {
           setSvg("");
           setError(null);
+          baseSizeRef.current = null;
+          setBaseSize(null);
           setZoom(1);
           setPan({ x: 0, y: 0 });
           return;
@@ -66,11 +145,16 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
         const result = await mermaid.render(`diagram-${id}`, normalizedSource);
 
         if (!cancelled) {
+          baseSizeRef.current = null;
+          setBaseSize(null);
           setSvg(result.svg);
           setError(null);
+          setPan({ x: 0, y: 0 });
         }
       } catch (err) {
         if (!cancelled) {
+          baseSizeRef.current = null;
+          setBaseSize(null);
           setError(err instanceof Error ? err.message : "Invalid Mermaid syntax");
         }
       }
@@ -83,32 +167,48 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
     };
   }, [source]);
 
-  // React's synthetic wheel listener is passive; bind natively so preventDefault works.
+  // Trackpad pinch is noisy in the webview; block native pinch/page zoom here.
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) {
       return;
     }
 
-    function handleWheel(event: WheelEvent) {
-      if (!svgRef.current) {
-        return;
+    function preventPinchWheel(event: WheelEvent) {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
       }
-      event.preventDefault();
-      const direction = event.deltaY > 0 ? -1 : 1;
-      setZoom((current) => clampZoom(current + direction * ZOOM_STEP));
     }
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
+    function preventGesture(event: Event) {
+      event.preventDefault();
+    }
+
+    el.addEventListener("wheel", preventPinchWheel, { passive: false });
+    el.addEventListener("gesturestart", preventGesture, { passive: false });
+    el.addEventListener("gesturechange", preventGesture, { passive: false });
+    el.addEventListener("gestureend", preventGesture, { passive: false });
+
+    return () => {
+      el.removeEventListener("wheel", preventPinchWheel);
+      el.removeEventListener("gesturestart", preventGesture);
+      el.removeEventListener("gesturechange", preventGesture);
+      el.removeEventListener("gestureend", preventGesture);
+    };
   }, []);
 
   function changeZoom(delta: number) {
     setZoom((current) => clampZoom(current + delta));
   }
 
-  function resetViewport() {
-    setZoom(1);
+  function fitToWindow() {
+    const currentBaseSize = measureBaseSize() ?? baseSizeRef.current ?? baseSize;
+    if (!currentBaseSize) {
+      return;
+    }
+
+    const nextZoom = getFitZoom(currentBaseSize, viewportRef.current);
+    setZoom(nextZoom);
     setPan({ x: 0, y: 0 });
   }
 
@@ -118,13 +218,15 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
     }
 
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDragStart({
+    dragStartRef.current = {
       x: event.clientX - pan.x,
       y: event.clientY - pan.y,
-    });
+    };
+    contentRef.current?.style.setProperty("cursor", "grabbing");
   }
 
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const dragStart = dragStartRef.current;
     if (!dragStart) {
       return;
     }
@@ -138,7 +240,8 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
   }
 
   function handlePointerEnd() {
-    setDragStart(null);
+    dragStartRef.current = null;
+    contentRef.current?.style.setProperty("cursor", "grab");
   }
 
   if (error) {
@@ -178,10 +281,11 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
           <Plus />
         </Button>
         <Button
-          aria-label="Reset viewport"
+          aria-label="Fit diagram to window"
           disabled={!svg}
-          onClick={resetViewport}
+          onClick={fitToWindow}
           size="icon"
+          title="Fit to window"
           type="button"
           variant="ghost"
         >
@@ -199,12 +303,16 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
       >
         {svg ? (
           <div
-            className="absolute left-1/2 top-1/2 max-h-full max-w-full will-change-transform"
+            ref={contentRef}
+            className="absolute left-1/2 top-1/2 will-change-transform"
             dangerouslySetInnerHTML={{ __html: svg }}
             style={{
-              cursor: dragStart ? "grabbing" : "grab",
-              transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              cursor: "grab",
+              height: baseSize ? `${baseSize.height * zoom}px` : undefined,
+              transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px)`,
               transformOrigin: "center",
+              visibility: baseSize ? "visible" : "hidden",
+              width: baseSize ? `${baseSize.width * zoom}px` : undefined,
             }}
           />
         ) : (
