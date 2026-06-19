@@ -1,5 +1,5 @@
 use tauri::menu::{Menu, MenuItemBuilder, MenuItemKind, SubmenuBuilder};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::adapters::outbound::native_window_manager;
 
@@ -14,6 +14,10 @@ pub fn setup_window_menu(app: &AppHandle) -> tauri::Result<()> {
         .id("new_tab")
         .accelerator("Cmd+T")
         .build(app)?;
+    let save_item = MenuItemBuilder::new("저장...")
+        .id("save_file")
+        .accelerator("Cmd+S")
+        .build(app)?;
 
     let mut placed_in_file_menu = false;
     for item in menu.items()? {
@@ -21,6 +25,7 @@ pub fn setup_window_menu(app: &AppHandle) -> tauri::Result<()> {
             if submenu.text().map(|text| text == "File").unwrap_or(false) {
                 submenu.insert(&new_window_item, 0)?;
                 submenu.insert(&new_tab_item, 1)?;
+                submenu.insert(&save_item, 2)?;
                 placed_in_file_menu = true;
                 break;
             }
@@ -31,6 +36,7 @@ pub fn setup_window_menu(app: &AppHandle) -> tauri::Result<()> {
         let file_menu = SubmenuBuilder::new(app, "파일")
             .item(&new_window_item)
             .item(&new_tab_item)
+            .item(&save_item)
             .build()?;
         menu.append(&file_menu)?;
     }
@@ -62,8 +68,23 @@ pub fn handle_window_menu_event(app: &AppHandle, id: &str) {
             }
         }
         "new_tab" => native_window_manager::open_editor_tab(app),
+        "save_file" => emit_save_request(app),
         "merge_all_windows" => native_window_manager::merge_all_windows(app),
         "toggle_tab_bar" => native_window_manager::toggle_tab_bar(app),
         _ => {}
+    }
+}
+
+fn emit_save_request(app: &AppHandle) {
+    let Some((_, window)) = app
+        .webview_windows()
+        .into_iter()
+        .find(|(_, window)| window.is_focused().unwrap_or(false))
+    else {
+        return;
+    };
+
+    if let Err(error) = window.emit("save-current-diagram", ()) {
+        eprintln!("[window] failed to request file save: {error}");
     }
 }
