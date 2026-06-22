@@ -75,23 +75,6 @@ pub fn merge_all_windows(app: &AppHandle) {
     }
 }
 
-pub fn toggle_tab_bar(app: &AppHandle) {
-    #[cfg(target_os = "macos")]
-    {
-        use objc2::MainThreadMarker;
-        use objc2_app_kit::NSApplication;
-
-        let _ = app.run_on_main_thread(|| {
-            if let Some(mtm) = MainThreadMarker::new() {
-                let ns_app = NSApplication::sharedApplication(mtm);
-                if let Some(window) = ns_app.keyWindow() {
-                    window.toggleTabBar(None);
-                }
-            }
-        });
-    }
-}
-
 fn build_default_editor_window(app: &AppHandle, label: String) -> tauri::Result<()> {
     build_editor_window_with_url(
         app,

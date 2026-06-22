@@ -29,11 +29,6 @@ pub fn merge_all_windows(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-pub fn toggle_tab_bar(app: tauri::AppHandle) {
-    native_window_manager::toggle_tab_bar(&app);
-}
-
-#[tauri::command]
 pub fn read_diagram_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|err| format!("{path}: {err}"))
 }

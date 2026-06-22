@@ -16,7 +16,6 @@ pub fn run() {
             tauri_commands::open_editor_window,
             tauri_commands::open_editor_tab,
             tauri_commands::merge_all_windows,
-            tauri_commands::toggle_tab_bar,
             tauri_commands::read_diagram_file,
             tauri_commands::save_diagram_file
         ])

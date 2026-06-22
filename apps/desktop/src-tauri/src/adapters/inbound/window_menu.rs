@@ -45,14 +45,9 @@ pub fn setup_window_menu(app: &AppHandle) -> tauri::Result<()> {
         .id("merge_all_windows")
         .accelerator("Ctrl+Cmd+M")
         .build(app)?;
-    let toggle_tab_bar_item = MenuItemBuilder::new("탭 바 표시/숨기기")
-        .id("toggle_tab_bar")
-        .accelerator("Shift+Cmd+\\")
-        .build(app)?;
 
     let window_menu = SubmenuBuilder::new(app, "창")
         .item(&merge_all_item)
-        .item(&toggle_tab_bar_item)
         .build()?;
 
     menu.append(&window_menu)?;
@@ -70,7 +65,6 @@ pub fn handle_window_menu_event(app: &AppHandle, id: &str) {
         "new_tab" => native_window_manager::open_editor_tab(app),
         "save_file" => emit_save_request(app),
         "merge_all_windows" => native_window_manager::merge_all_windows(app),
-        "toggle_tab_bar" => native_window_manager::toggle_tab_bar(app),
         _ => {}
     }
 }
