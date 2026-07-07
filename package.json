@@ -8,7 +8,8 @@
     "build": "pnpm --filter @mermaid-live/desktop build",
     "tauri": "pnpm --filter @mermaid-live/desktop tauri",
     "lint": "pnpm --filter @mermaid-live/desktop lint",
-    "typecheck": "pnpm --filter @mermaid-live/desktop typecheck"
+    "typecheck": "pnpm --filter @mermaid-live/desktop typecheck",
+    "clean": "node scripts/clean.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

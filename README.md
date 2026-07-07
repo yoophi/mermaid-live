@@ -23,3 +23,12 @@ For the native app:
 ```bash
 pnpm tauri dev
 ```
+
+## Cleanup
+
+Remove development-generated resources such as `node_modules`, `apps/desktop/dist`,
+and `apps/desktop/src-tauri/target`:
+
+```bash
+pnpm run clean
+```
