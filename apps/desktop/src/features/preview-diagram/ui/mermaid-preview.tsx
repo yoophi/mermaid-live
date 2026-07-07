@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Maximize2, Minus, Plus } from "lucide-react";
 import mermaid from "mermaid";
 import { Button } from "@/shared/ui/button";
@@ -25,6 +25,7 @@ const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
 const FIT_PADDING = 48;
+const ZOOM_EPSILON = 0.001;
 
 interface PanPosition {
   x: number;
@@ -40,17 +41,37 @@ function clampZoom(value: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 }
 
+function readPositiveNumber(value: string | null) {
+  const parsed = parseFloat(value ?? "");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 function readSvgBaseSize(svgEl: SVGSVGElement): Size | null {
   const viewBox = svgEl.viewBox.baseVal;
-  const width = viewBox.width > 0 ? viewBox.width : parseFloat(svgEl.getAttribute("width") ?? "");
-  const height =
-    viewBox.height > 0 ? viewBox.height : parseFloat(svgEl.getAttribute("height") ?? "");
+  const viewBoxSize =
+    viewBox.width > 0 && viewBox.height > 0 ? { width: viewBox.width, height: viewBox.height } : null;
 
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    return null;
+  if (viewBoxSize) {
+    return viewBoxSize;
   }
 
-  return { width, height };
+  const width = readPositiveNumber(svgEl.getAttribute("width"));
+  const height = readPositiveNumber(svgEl.getAttribute("height"));
+
+  if (width && height) {
+    return { width, height };
+  }
+
+  try {
+    const box = svgEl.getBBox();
+    if (box.width > 0 && box.height > 0) {
+      return { width: box.width, height: box.height };
+    }
+  } catch {
+    // Some SVGs cannot provide a bbox until fully attached and laid out.
+  }
+
+  return null;
 }
 
 function getElementSize(el: HTMLElement | null): Size | null {
@@ -69,7 +90,7 @@ function getElementSize(el: HTMLElement | null): Size | null {
 function getFitZoom(baseSize: Size | null, viewportEl: HTMLElement | null) {
   const viewportSize = getElementSize(viewportEl);
   if (!baseSize || !viewportSize) {
-    return 1;
+    return null;
   }
 
   const availableWidth = Math.max(1, viewportSize.width - FIT_PADDING * 2);
@@ -90,7 +111,7 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<PanPosition>({ x: 0, y: 0 });
 
-  function measureBaseSize() {
+  const measureBaseSize = useCallback(() => {
     const svgEl = contentRef.current?.querySelector("svg");
     if (!svgEl) {
       return null;
@@ -101,7 +122,33 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
       baseSizeRef.current = nextBaseSize;
     }
     return nextBaseSize;
-  }
+  }, []);
+
+  const applyFitToViewport = useCallback(
+    (measuredBaseSize?: Size | null) => {
+      const nextBaseSize = measuredBaseSize ?? measureBaseSize() ?? baseSizeRef.current;
+      if (!nextBaseSize) {
+        return false;
+      }
+
+      const nextZoom = getFitZoom(nextBaseSize, viewportRef.current);
+      if (nextZoom === null) {
+        return false;
+      }
+
+      baseSizeRef.current = nextBaseSize;
+      setBaseSize((current) =>
+        current?.width === nextBaseSize.width && current.height === nextBaseSize.height
+          ? current
+          : nextBaseSize,
+      );
+      setZoom((current) => (Math.abs(current - nextZoom) < ZOOM_EPSILON ? current : nextZoom));
+      setPan((current) => (current.x === 0 && current.y === 0 ? current : { x: 0, y: 0 }));
+
+      return true;
+    },
+    [measureBaseSize],
+  );
 
   useLayoutEffect(() => {
     if (!svg) {
@@ -111,19 +158,8 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
     }
 
     const nextBaseSize = measureBaseSize();
-    if (!nextBaseSize) {
-      return;
-    }
-
-    const initialZoom = getFitZoom(nextBaseSize, viewportRef.current);
-    setBaseSize((current) =>
-      current?.width === nextBaseSize.width && current.height === nextBaseSize.height
-        ? current
-        : nextBaseSize,
-    );
-    setZoom((current) => (Math.abs(current - initialZoom) < 0.001 ? current : initialZoom));
-    setPan((current) => (current.x === 0 && current.y === 0 ? current : { x: 0, y: 0 }));
-  }, [svg]);
+    applyFitToViewport(nextBaseSize);
+  }, [applyFitToViewport, measureBaseSize, svg]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +192,9 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
           baseSizeRef.current = null;
           setBaseSize(null);
           setError(err instanceof Error ? err.message : "Invalid Mermaid syntax");
+          setSvg("");
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
         }
       }
     }
@@ -201,15 +240,29 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
     setZoom((current) => clampZoom(current + delta));
   }
 
-  function fitToWindow() {
-    const currentBaseSize = measureBaseSize() ?? baseSizeRef.current ?? baseSize;
-    if (!currentBaseSize) {
+  useEffect(() => {
+    const viewportEl = viewportRef.current;
+    if (!svg || !viewportEl || typeof ResizeObserver === "undefined") {
       return;
     }
 
-    const nextZoom = getFitZoom(currentBaseSize, viewportRef.current);
-    setZoom(nextZoom);
-    setPan({ x: 0, y: 0 });
+    const observer = new ResizeObserver(() => {
+      if (dragStartRef.current) {
+        return;
+      }
+
+      applyFitToViewport();
+    });
+
+    observer.observe(viewportEl);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [applyFitToViewport, svg]);
+
+  function fitToWindow() {
+    applyFitToViewport(baseSize);
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
