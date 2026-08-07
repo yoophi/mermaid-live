@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { initialDiagram } from "@/entities/diagram/model/sample";
-import { useSaveDiagramRequest } from "@/features/save-diagram";
+import { useChartDocument } from "@/features/manage-chart-document";
 import { DiagramWorkspace } from "@/widgets/diagram-workspace";
 
 export function EditorPage() {
-  const [source, setSource] = useState(initialDiagram);
-  useSaveDiagramRequest(source);
+  const { document, editSource, loadUntitledSource } = useChartDocument(initialDiagram);
 
   useEffect(() => {
     const sourceFile = new URLSearchParams(window.location.search).get("sourceFile");
@@ -18,7 +17,7 @@ export function EditorPage() {
     invoke<string>("read_diagram_file", { path: sourceFile })
       .then((fileSource) => {
         if (!cancelled) {
-          setSource(fileSource);
+          loadUntitledSource(fileSource);
         }
       })
       .catch((error) => {
@@ -28,7 +27,7 @@ export function EditorPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadUntitledSource]);
 
-  return <DiagramWorkspace source={source} onSourceChange={setSource} />;
+  return <DiagramWorkspace source={document.source} onSourceChange={editSource} />;
 }
