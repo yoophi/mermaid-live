@@ -17,6 +17,8 @@
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.37.1",
     "@radix-ui/react-slot": "^1.2.3",
+    "@react95/core": "9.8.3",
+    "@react95/icons": "2.5.3",
     "@tauri-apps/api": "^2.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -13,6 +13,42 @@ const BUILD_METADATA_FALLBACK: &str = "unknown";
 
 pub fn setup_window_menu(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::default(app)?;
+    let product_name = app
+        .config()
+        .product_name
+        .as_ref()
+        .unwrap_or(&app.package_info().name);
+
+    let about_item = MenuItemBuilder::new(format!("About {product_name}"))
+        .id("show_about")
+        .build(app)?;
+
+    #[cfg(target_os = "macos")]
+    let mut replaced_native_about = false;
+    #[cfg(target_os = "macos")]
+    if let Some(MenuItemKind::Submenu(app_menu)) = menu.items()?.into_iter().next() {
+        app_menu.remove_at(0)?;
+        app_menu.insert(&about_item, 0)?;
+        replaced_native_about = true;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    let mut replaced_native_about = false;
+    #[cfg(not(target_os = "macos"))]
+    for item in menu.items()? {
+        if let MenuItemKind::Submenu(submenu) = item {
+            if submenu.text().map(|text| text == "Help").unwrap_or(false) {
+                submenu.remove_at(0)?;
+                submenu.insert(&about_item, 0)?;
+                replaced_native_about = true;
+                break;
+            }
+        }
+    }
+
+    if !replaced_native_about {
+        menu.append(&SubmenuBuilder::new(app, "Help").item(&about_item).build()?)?;
+    }
 
     install_about_menu_item(app, &menu)?;
 
@@ -28,39 +64,51 @@ pub fn setup_window_menu(app: &AppHandle) -> tauri::Result<()> {
         .id("save_file")
         .accelerator("Cmd+S")
         .build(app)?;
-
-    let mut placed_in_file_menu = false;
-    for item in menu.items()? {
-        if let MenuItemKind::Submenu(submenu) = item {
-            if submenu.text().map(|text| text == "File").unwrap_or(false) {
-                submenu.insert(&new_window_item, 0)?;
-                submenu.insert(&new_tab_item, 1)?;
-                submenu.insert(&save_item, 2)?;
-                placed_in_file_menu = true;
-                break;
-            }
-        }
-    }
-
-    if !placed_in_file_menu {
-        let file_menu = SubmenuBuilder::new(app, "파일")
-            .item(&new_window_item)
-            .item(&new_tab_item)
-            .item(&save_item)
-            .build()?;
-        menu.append(&file_menu)?;
-    }
-
     let merge_all_item = MenuItemBuilder::new("모든 창 합치기")
         .id("merge_all_windows")
         .accelerator("Ctrl+Cmd+M")
         .build(app)?;
 
-    let window_menu = SubmenuBuilder::new(app, "창")
-        .item(&merge_all_item)
-        .build()?;
+    let mut found_file_menu = false;
+    let mut found_window_menu = false;
+    for item in menu.items()? {
+        let MenuItemKind::Submenu(submenu) = item else {
+            continue;
+        };
 
-    menu.append(&window_menu)?;
+        match submenu.text().as_deref() {
+            Ok("File") => {
+                submenu.insert(&new_window_item, 0)?;
+                submenu.insert(&new_tab_item, 1)?;
+                submenu.insert(&save_item, 2)?;
+                found_file_menu = true;
+            }
+            Ok("Window") => {
+                submenu.append(&merge_all_item)?;
+                found_window_menu = true;
+            }
+            _ => {}
+        }
+    }
+
+    if !found_file_menu {
+        menu.append(
+            &SubmenuBuilder::new(app, "File")
+                .item(&new_window_item)
+                .item(&new_tab_item)
+                .item(&save_item)
+                .build()?,
+        )?;
+    }
+
+    if !found_window_menu {
+        menu.append(
+            &SubmenuBuilder::new(app, "Window")
+                .item(&merge_all_item)
+                .build()?,
+        )?;
+    }
+
     app.set_menu(menu)?;
     Ok(())
 }
@@ -75,6 +123,11 @@ pub fn handle_window_menu_event(app: &AppHandle, id: &str) {
         }
         "new_tab" => native_window_manager::open_editor_tab(app),
         "save_file" => emit_save_request(app),
+        "show_about" => {
+            if let Err(error) = native_window_manager::open_about_window(app) {
+                eprintln!("[window] failed to create About window: {error}");
+            }
+        }
         "merge_all_windows" => native_window_manager::merge_all_windows(app),
         _ => {}
     }

@@ -94,10 +94,10 @@ export function DiagramWorkspace({ source, onSourceChange }: DiagramWorkspacePro
 
   return (
     <main
-      className="grid h-screen min-h-0 overflow-hidden"
+      className="grid h-full min-h-0 overflow-hidden"
       style={{ gridTemplateColumns: `${sourcePaneWidth}px 8px minmax(0, 1fr)` }}
     >
-      <section className="flex min-h-0 min-w-0 flex-col bg-card/88">
+      <section className="flex min-h-0 min-w-0 flex-col bg-[#c0c0c0]">
         <div className="min-h-0 flex-1">
           <DiagramCodeEditor value={source} onChange={onSourceChange} />
         </div>
@@ -109,7 +109,7 @@ export function DiagramWorkspace({ source, onSourceChange }: DiagramWorkspacePro
         aria-valuemax={MAX_SOURCE_PANE_WIDTH}
         aria-valuemin={MIN_SOURCE_PANE_WIDTH}
         aria-valuenow={sourcePaneWidth}
-        className="group flex h-full cursor-col-resize touch-none items-stretch justify-center border-x bg-border/35 outline-none transition-colors hover:bg-primary/18 focus-visible:bg-primary/18"
+        className="pane-separator-95"
         onKeyDown={handleResizeKeyDown}
         onPointerCancel={handleResizePointerEnd}
         onPointerDown={handleResizePointerDown}
@@ -118,7 +118,7 @@ export function DiagramWorkspace({ source, onSourceChange }: DiagramWorkspacePro
         role="separator"
         tabIndex={0}
       >
-        <div className="my-auto h-10 w-px rounded-full bg-muted-foreground/45 transition-colors group-hover:bg-primary group-focus-visible:bg-primary" />
+        <div aria-hidden="true" className="pane-separator-95__grip" />
       </div>
 
       <section className="flex min-h-0 min-w-0 flex-col bg-background/82">

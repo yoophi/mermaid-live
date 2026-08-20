@@ -8,9 +8,15 @@ const EDITOR_WINDOW_WIDTH: f64 = 1280.0;
 const EDITOR_WINDOW_HEIGHT: f64 = 800.0;
 const EDITOR_WINDOW_MIN_WIDTH: f64 = 960.0;
 const EDITOR_WINDOW_MIN_HEIGHT: f64 = 620.0;
+const ABOUT_WINDOW_LABEL: &str = "about-window";
+const ABOUT_WINDOW_TITLE: &str = "About Mermaid Live";
+const ABOUT_WINDOW_WIDTH: f64 = 404.0;
+const ABOUT_WINDOW_HEIGHT: f64 = 248.0;
 
 #[cfg(target_os = "macos")]
 const EDITOR_TABBING_IDENTIFIER: &str = "mermaid-live-editor";
+#[cfg(target_os = "macos")]
+const ABOUT_TABBING_IDENTIFIER: &str = "mermaid-live-about";
 
 static WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
 static TAB_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -18,6 +24,56 @@ static TAB_COUNTER: AtomicU64 = AtomicU64::new(1);
 pub fn open_editor_window(app: &AppHandle) -> tauri::Result<()> {
     let label = format!("editor-{}", WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed));
     build_default_editor_window(app, label)?;
+    Ok(())
+}
+
+pub fn open_about_window(app: &AppHandle) -> tauri::Result<()> {
+    if let Some(window) = app.get_webview_window(ABOUT_WINDOW_LABEL) {
+        let _ = window.unminimize();
+        window.show()?;
+        window.set_focus()?;
+        return Ok(());
+    }
+
+    let mut builder = WebviewWindowBuilder::new(
+        app,
+        ABOUT_WINDOW_LABEL,
+        WebviewUrl::App("index.html?view=about".into()),
+    )
+    .title(ABOUT_WINDOW_TITLE)
+    .inner_size(ABOUT_WINDOW_WIDTH, ABOUT_WINDOW_HEIGHT)
+    .resizable(false)
+    .maximizable(false)
+    .minimizable(false)
+    .decorations(false)
+    .visible(true)
+    .focused(true)
+    .center();
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.tabbing_identifier(ABOUT_TABBING_IDENTIFIER);
+    }
+
+    let window = builder.build()?;
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::{NSWindow, NSWindowTabbingMode};
+
+        let window_pointer = window.ns_window()?;
+        let native_window: &NSWindow = unsafe { &*window_pointer.cast::<NSWindow>() };
+        native_window.setTabbingMode(NSWindowTabbingMode::Disallowed);
+    }
+
+    window.set_size(tauri::LogicalSize::new(
+        ABOUT_WINDOW_WIDTH,
+        ABOUT_WINDOW_HEIGHT,
+    ))?;
+    window.center()?;
+    window.show()?;
+    window.set_focus()?;
+
     Ok(())
 }
 
