@@ -1837,7 +1837,7 @@ dependencies = [
 
 [[package]]
 name = "mermaid-live"
-version = "2026.8.1-rc.1"
+version = "2026.8.1"
 dependencies = [
  "arboard",
  "md5",
