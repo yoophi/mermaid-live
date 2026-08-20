@@ -12,6 +12,10 @@ fn main() {
         package_json_version()
     );
     println!(
+        "cargo:rustc-env=MERMAID_LIVE_BUILD_VERSION={}",
+        build_version()
+    );
+    println!(
         "cargo:rustc-env=MERMAID_LIVE_GIT_COMMIT_HASH={}",
         build_commit_hash()
     );
@@ -47,13 +51,37 @@ fn build_commit_hash() -> String {
     env::var("GITHUB_SHA")
         .or_else(|_| env::var("COMMIT_SHA"))
         .ok()
-        .map(|hash| hash.trim().to_owned())
+        .map(|hash| hash.trim().chars().take(7).collect::<String>())
         .filter(|hash| !hash.is_empty())
         .unwrap_or_else(git_commit_hash)
 }
 
 fn git_commit_hash() -> String {
-    git_output(&["rev-parse", "HEAD"]).unwrap_or_else(|| "unknown".into())
+    git_output(&["rev-parse", "--short=7", "HEAD"]).unwrap_or_else(|| "unknown".into())
+}
+
+fn build_version() -> String {
+    let base_version = package_json_version();
+    let commit_hash = build_commit_hash();
+
+    if commit_hash == "unknown" {
+        return format!("{base_version}-unknown");
+    }
+
+    let dirty = git_output(&["status", "--porcelain"])
+        .map(|status| !status.is_empty())
+        .unwrap_or(false);
+    let release_tag = build_commit_tag()
+        .split(", ")
+        .any(|tag| tag == base_version);
+
+    if release_tag && !dirty {
+        base_version
+    } else if dirty {
+        format!("{base_version}-{commit_hash}-dirty")
+    } else {
+        format!("{base_version}-{commit_hash}")
+    }
 }
 
 fn build_commit_tag() -> String {

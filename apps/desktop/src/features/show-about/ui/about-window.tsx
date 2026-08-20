@@ -76,7 +76,9 @@ export function AboutWindow() {
               <h1 id={ABOUT_WINDOW_TITLE_ID} className="about-window-95__product-name">
                 Mermaid Live
               </h1>
-              <p className="about-window-95__version">Version 0.1.0</p>
+              <p className="about-window-95__version">
+                Version {__MERMAID_LIVE_BUILD_VERSION__}
+              </p>
               <p id={ABOUT_WINDOW_DESCRIPTION_ID} className="about-window-95__description">
                 Mermaid diagram editor for the desktop.
               </p>

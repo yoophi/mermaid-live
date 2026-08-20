@@ -6,7 +6,7 @@ use crate::adapters::outbound::native_window_manager;
 
 const ABOUT_MENU_ID: &str = "about_mermaid_live";
 const APP_DISPLAY_NAME: &str = "Mermaid Live";
-const APP_VERSION: &str = env!("MERMAID_LIVE_PACKAGE_VERSION");
+const BUILD_VERSION: &str = env!("MERMAID_LIVE_BUILD_VERSION");
 const BUILD_COMMIT_HASH: &str = env!("MERMAID_LIVE_GIT_COMMIT_HASH");
 const BUILD_COMMIT_TAG: &str = env!("MERMAID_LIVE_GIT_COMMIT_TAG");
 const BUILD_METADATA_FALLBACK: &str = "unknown";
@@ -169,7 +169,7 @@ fn find_submenu(
 fn show_about_dialog(app: &AppHandle) {
     app.dialog()
         .message(format!(
-            "{APP_DISPLAY_NAME}\n\nVersion: {APP_VERSION}\nCommit: {}\nTag: {}",
+            "{APP_DISPLAY_NAME}\n\nVersion: {BUILD_VERSION}\nCommit: {}\nTag: {}",
             display_build_metadata(BUILD_COMMIT_HASH),
             display_build_metadata(BUILD_COMMIT_TAG)
         ))
