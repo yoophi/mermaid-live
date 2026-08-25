@@ -146,10 +146,14 @@ fn build_editor_window_with_url(
     url: WebviewUrl,
     title: String,
 ) -> tauri::Result<()> {
+    // `decorations` from tauri.conf.json only applies to windows declared there,
+    // so every programmatically built window has to opt out of the native title
+    // bar again to keep the Windows 95 chrome as the only title bar.
     let mut builder = WebviewWindowBuilder::new(app, label, url)
         .title(title)
         .inner_size(EDITOR_WINDOW_WIDTH, EDITOR_WINDOW_HEIGHT)
-        .min_inner_size(EDITOR_WINDOW_MIN_WIDTH, EDITOR_WINDOW_MIN_HEIGHT);
+        .min_inner_size(EDITOR_WINDOW_MIN_WIDTH, EDITOR_WINDOW_MIN_HEIGHT)
+        .decorations(false);
 
     #[cfg(target_os = "macos")]
     {
@@ -178,6 +182,7 @@ fn open_macos_editor_tab(app: &AppHandle) {
             .inner_size(EDITOR_WINDOW_WIDTH, EDITOR_WINDOW_HEIGHT)
             .min_inner_size(EDITOR_WINDOW_MIN_WIDTH, EDITOR_WINDOW_MIN_HEIGHT)
             .tabbing_identifier(EDITOR_TABBING_IDENTIFIER)
+            .decorations(false)
             .build();
 
         let new_window = match built {
