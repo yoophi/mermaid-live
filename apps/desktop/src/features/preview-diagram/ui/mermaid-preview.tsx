@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minus, Plus } from "lucide-react";
 import mermaid from "mermaid";
-import { Win95Button, Win95Input } from "@/shared/ui/window-95-controls";
+import { Button } from "@/shared/ui/button";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -13,7 +13,7 @@ mermaid.initialize({
     primaryTextColor: "#1f2933",
     primaryBorderColor: "#41616f",
     lineColor: "#41616f",
-    fontFamily: "sans-serif",
+    fontFamily: "Avenir Next, Segoe UI, sans-serif",
   },
 });
 
@@ -35,18 +35,6 @@ interface PanPosition {
 interface Size {
   width: number;
   height: number;
-}
-
-async function renderMermaid(id: string, source: string) {
-  const renderHost = document.createElement("div");
-  renderHost.className = "mermaid-preview mermaid-render-host";
-  document.body.append(renderHost);
-
-  try {
-    return await mermaid.render(id, source, renderHost);
-  } finally {
-    renderHost.remove();
-  }
 }
 
 function clampZoom(value: number) {
@@ -122,7 +110,6 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
   const [baseSize, setBaseSize] = useState<Size | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<PanPosition>({ x: 0, y: 0 });
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const measureBaseSize = useCallback(() => {
     const svgEl = contentRef.current?.querySelector("svg");
@@ -191,7 +178,7 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
           return;
         }
 
-        const result = await renderMermaid(`diagram-${id}`, normalizedSource);
+        const result = await mermaid.render(`diagram-${id}`, normalizedSource);
 
         if (!cancelled) {
           baseSizeRef.current = null;
@@ -254,24 +241,6 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
   }
 
   useEffect(() => {
-    if (!isFullscreen) {
-      return;
-    }
-
-    function exitFullscreen(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsFullscreen(false);
-      }
-    }
-
-    window.addEventListener("keydown", exitFullscreen);
-
-    return () => {
-      window.removeEventListener("keydown", exitFullscreen);
-    };
-  }, [isFullscreen]);
-
-  useEffect(() => {
     const viewportEl = viewportRef.current;
     if (!svg || !viewportEl || typeof ResizeObserver === "undefined") {
       return;
@@ -291,6 +260,10 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
       observer.disconnect();
     };
   }, [applyFitToViewport, svg]);
+
+  function fitToWindow() {
+    applyFitToViewport(baseSize);
+  }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!svg) {
@@ -335,55 +308,42 @@ export function MermaidPreview({ source }: MermaidPreviewProps) {
   }
 
   return (
-    <div
-      className={
-        isFullscreen
-          ? "mermaid-preview-shell mermaid-preview-shell--fullscreen"
-          : "mermaid-preview-shell"
-      }
-    >
-      <div aria-label="Diagram view controls" className="mermaid-controls-95" role="toolbar">
-        <Win95Button
+    <div className="relative h-full overflow-hidden">
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-md border bg-card/92 p-1 shadow-sm backdrop-blur">
+        <Button
           aria-label="Zoom out"
-          className="mermaid-controls-95__button"
           disabled={!svg || zoom <= MIN_ZOOM}
           onClick={() => changeZoom(-ZOOM_STEP)}
+          size="icon"
           type="button"
+          variant="ghost"
         >
-          <span aria-hidden="true" className="mermaid-controls-95__glyph">
-            <span className="mermaid-controls-95__glyph-line mermaid-controls-95__glyph-line--horizontal" />
-          </span>
-        </Win95Button>
-        <Win95Input
-          aria-label="Current zoom"
-          className="mermaid-controls-95__zoom-input"
-          readOnly
-          type="text"
-          value={`${Math.round(zoom * 100)}%`}
-        />
-        <Win95Button
+          <Minus />
+        </Button>
+        <div className="min-w-12 text-center text-xs font-semibold text-muted-foreground">
+          {Math.round(zoom * 100)}%
+        </div>
+        <Button
           aria-label="Zoom in"
-          className="mermaid-controls-95__button"
           disabled={!svg || zoom >= MAX_ZOOM}
           onClick={() => changeZoom(ZOOM_STEP)}
+          size="icon"
           type="button"
+          variant="ghost"
         >
-          <span aria-hidden="true" className="mermaid-controls-95__glyph">
-            <span className="mermaid-controls-95__glyph-line mermaid-controls-95__glyph-line--horizontal" />
-            <span className="mermaid-controls-95__glyph-line mermaid-controls-95__glyph-line--vertical" />
-          </span>
-        </Win95Button>
-        <Win95Button
-          aria-label={isFullscreen ? "Exit fullscreen preview" : "Open fullscreen preview"}
-          aria-pressed={isFullscreen}
-          className="mermaid-controls-95__button"
+          <Plus />
+        </Button>
+        <Button
+          aria-label="Fit diagram to window"
           disabled={!svg}
-          onClick={() => setIsFullscreen((current) => !current)}
-          title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen preview"}
+          onClick={fitToWindow}
+          size="icon"
+          title="Fit to window"
           type="button"
+          variant="ghost"
         >
-          {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
-        </Win95Button>
+          <Maximize2 />
+        </Button>
       </div>
 
       <div

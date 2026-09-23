@@ -49,35 +49,33 @@ export function DiagramCodeEditor({ value, onChange }: DiagramCodeEditorProps) {
           EditorView.theme({
             "&": {
               height: "100%",
-              background: "#c0c0c0",
-              color: "#000",
-              fontSize: "12px",
-            },
-            ".cm-scroller, .cm-scroller *": {
-              fontFamily: "'Courier New', Courier, monospace",
+              background: "transparent",
+              color: "var(--foreground)",
+              fontSize: "14px",
             },
             ".cm-scroller": {
-              lineHeight: "1.5",
+              fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+              lineHeight: "1.62",
               overflow: "auto",
             },
             ".cm-gutters": {
-              background: "#c0c0c0",
-              color: "#000",
-              borderRight: "1px solid #808080",
-              boxShadow: "inset -1px 0 #fff",
+              background: "color-mix(in oklab, var(--muted), transparent 36%)",
+              color: "var(--muted-foreground)",
+              borderRight: "1px solid var(--border)",
             },
             ".cm-activeLine": {
-              background: "#d4d0c8",
+              background: "color-mix(in oklab, var(--accent), transparent 82%)",
             },
             ".cm-activeLineGutter": {
-              background: "#d4d0c8",
-              color: "#000",
+              background: "color-mix(in oklab, var(--accent), transparent 78%)",
+              color: "var(--foreground)",
             },
             ".cm-content": {
-              padding: "12px 0",
+              padding: "18px 0",
             },
             ".cm-line": {
-              padding: "0 12px",
+              padding: "0 18px",
             },
             ".cm-focused": {
               outline: "none",
