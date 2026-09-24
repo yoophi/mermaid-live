@@ -1,0 +1,12 @@
+[package]
+name = "mmdcat"
+description = "Render a Mermaid chart inline in the terminal using the kitty graphics protocol"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+base64.workspace = true
+libc.workspace = true
+mermaid-core = { path = "../mermaid-core" }
+serde_json.workspace = true
