@@ -1,0 +1,13 @@
+[package]
+name = "mermaid-core"
+description = "Chart detection, raster sizing, and the render wire protocol shared by the desktop app and the terminal CLI"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

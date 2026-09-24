@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Run as an accessory app: menu bar only, no Dock icon and no app menu.
+	     The app is a background renderer for the terminal CLI and a tray inbox,
+	     so a Dock icon would be noise. Entry points stay in the tray menu.
+	     Remove this key to get the Dock icon back. -->
+	<key>LSUIElement</key>
+	<true/>
+</dict>
+</plist>
