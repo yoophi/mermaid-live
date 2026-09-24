@@ -1,28 +1,17 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Maximize2, Minus, Plus } from "lucide-react";
 import mermaid from "mermaid";
+import { clampZoom, computeFitScale, MAX_ZOOM, MIN_ZOOM } from "@/shared/lib/diagram-fit";
+import { mermaidPreviewConfig } from "@/shared/lib/mermaid-config";
+import { readSvgBaseSize, type Size } from "@/shared/lib/svg-size";
 import { Button } from "@/shared/ui/button";
 
-mermaid.initialize({
-  startOnLoad: false,
-  securityLevel: "strict",
-  theme: "base",
-  themeVariables: {
-    background: "transparent",
-    primaryColor: "#f7e0a4",
-    primaryTextColor: "#1f2933",
-    primaryBorderColor: "#41616f",
-    lineColor: "#41616f",
-    fontFamily: "Avenir Next, Segoe UI, sans-serif",
-  },
-});
+mermaid.initialize(mermaidPreviewConfig);
 
 interface MermaidPreviewProps {
   source: string;
 }
 
-const MIN_ZOOM = 0.02;
-const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
 const FIT_PADDING = 48;
 const ZOOM_EPSILON = 0.001;
@@ -30,48 +19,6 @@ const ZOOM_EPSILON = 0.001;
 interface PanPosition {
   x: number;
   y: number;
-}
-
-interface Size {
-  width: number;
-  height: number;
-}
-
-function clampZoom(value: number) {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
-}
-
-function readPositiveNumber(value: string | null) {
-  const parsed = parseFloat(value ?? "");
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function readSvgBaseSize(svgEl: SVGSVGElement): Size | null {
-  const viewBox = svgEl.viewBox.baseVal;
-  const viewBoxSize =
-    viewBox.width > 0 && viewBox.height > 0 ? { width: viewBox.width, height: viewBox.height } : null;
-
-  if (viewBoxSize) {
-    return viewBoxSize;
-  }
-
-  const width = readPositiveNumber(svgEl.getAttribute("width"));
-  const height = readPositiveNumber(svgEl.getAttribute("height"));
-
-  if (width && height) {
-    return { width, height };
-  }
-
-  try {
-    const box = svgEl.getBBox();
-    if (box.width > 0 && box.height > 0) {
-      return { width: box.width, height: box.height };
-    }
-  } catch {
-    // Some SVGs cannot provide a bbox until fully attached and laid out.
-  }
-
-  return null;
 }
 
 function getElementSize(el: HTMLElement | null): Size | null {
@@ -93,10 +40,10 @@ function getFitZoom(baseSize: Size | null, viewportEl: HTMLElement | null) {
     return null;
   }
 
-  const availableWidth = Math.max(1, viewportSize.width - FIT_PADDING * 2);
-  const availableHeight = Math.max(1, viewportSize.height - FIT_PADDING * 2);
-
-  return clampZoom(Math.min(availableWidth / baseSize.width, availableHeight / baseSize.height));
+  return computeFitScale(baseSize, {
+    width: viewportSize.width - FIT_PADDING * 2,
+    height: viewportSize.height - FIT_PADDING * 2,
+  });
 }
 
 export function MermaidPreview({ source }: MermaidPreviewProps) {

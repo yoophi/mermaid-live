@@ -1,6 +1,10 @@
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
+
 use crate::adapters::outbound::{diagram_file_saver, native_window_manager};
 use crate::domain::diagram::DiagramValidation;
 use crate::infrastructure::app_state::AppState;
+use crate::infrastructure::render_service::RenderReply;
 
 #[tauri::command]
 pub fn validate_diagram_source(
@@ -41,4 +45,31 @@ pub async fn save_diagram_file(
 ) -> Result<Option<String>, String> {
     diagram_file_saver::save_diagram_source(&window, &source, &default_file_name)
         .map(|path| path.map(|path| path.display().to_string()))
+}
+
+/// Receives the image the hidden render window produced, or the reason it could
+/// not produce one.
+#[tauri::command]
+pub fn deliver_chart_png(
+    state: tauri::State<'_, AppState>,
+    request_id: String,
+    png_base64: Option<String>,
+    error: Option<String>,
+) -> Result<(), String> {
+    let reply = match (png_base64, error) {
+        (Some(encoded), _) => match BASE64.decode(encoded.as_bytes()) {
+            Ok(png) => RenderReply::Png(png),
+            Err(decode_error) => {
+                RenderReply::Failed(format!("the rendered image was unreadable: {decode_error}"))
+            }
+        },
+        (None, Some(message)) => RenderReply::Failed(message),
+        (None, None) => RenderReply::Failed("the renderer reported no result".to_string()),
+    };
+
+    if state.pending_renders.complete(&request_id, reply) {
+        Ok(())
+    } else {
+        Err(format!("no render is waiting for {request_id}"))
+    }
 }

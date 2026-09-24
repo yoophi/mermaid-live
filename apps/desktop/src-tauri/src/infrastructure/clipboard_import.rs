@@ -1,35 +1,37 @@
-use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::{AppHandle, Manager, Window, WindowEvent};
 
-use crate::adapters::outbound::{clipboard_reader, native_window_manager, temp_diagram_file};
-use crate::domain::mermaid_chart;
+use crate::infrastructure::clipboard_watcher;
 
 static APP_ACTIVE: OnceLock<Mutex<bool>> = OnceLock::new();
-static TEMP_WINDOW_INDEX: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
 
 pub fn handle_window_event(window: &Window, event: &WindowEvent) {
-    if matches!(event, WindowEvent::Destroyed) {
-        remove_temp_window(window.label());
-        return;
-    }
-
     match event {
-        WindowEvent::Focused(false) => {
-            schedule_inactive_check(window.app_handle().clone());
-            return;
-        }
+        WindowEvent::Focused(false) => schedule_inactive_check(window.app_handle().clone()),
         WindowEvent::Focused(true) => {
-            if !mark_app_activated() {
-                return;
+            if mark_app_activated() {
+                clipboard_watcher::import_on_activation(window.app_handle());
             }
         }
-        _ => return,
+        _ => {}
     }
+}
 
-    import_clipboard_mermaid_chart(window);
+/// Records that the app is in the foreground, for when it was brought there by
+/// the tray rather than by the user switching to it.
+pub fn note_app_activated() {
+    set_app_active(true);
+}
+
+/// Whether the app is in the foreground.
+///
+/// This reads the tracked flag instead of asking AppKit, so the watcher thread
+/// can call it: `is_application_active` only answers correctly on the main
+/// thread and reports `true` everywhere else.
+pub fn is_app_active() -> bool {
+    with_app_active(|active| *active)
 }
 
 fn schedule_inactive_check(app: AppHandle) {
@@ -43,37 +45,6 @@ fn schedule_inactive_check(app: AppHandle) {
             }
         });
     });
-}
-
-fn import_clipboard_mermaid_chart(window: &Window) {
-    let app = window.app_handle().clone();
-    let Ok(source) = clipboard_reader::read_clipboard_text() else {
-        return;
-    };
-
-    let Some(source) = mermaid_chart::extract_mermaid_chart_source(&source) else {
-        return;
-    };
-
-    let md5 = temp_diagram_file::diagram_source_md5(&source);
-    if focus_existing_temp_window(&app, &md5) {
-        return;
-    }
-
-    let path = match temp_diagram_file::write_temp_diagram_file(&source, &md5) {
-        Ok(path) => path,
-        Err(error) => {
-            eprintln!("[clipboard] failed to write temp diagram: {error}");
-            return;
-        }
-    };
-
-    register_temp_window(md5.clone());
-
-    if let Err(error) = native_window_manager::open_temp_diagram_window(&app, path, &md5) {
-        remove_temp_window(&native_window_manager::temp_diagram_window_label(&md5));
-        eprintln!("[clipboard] failed to open temp diagram window: {error}");
-    }
 }
 
 fn mark_app_activated() -> bool {
@@ -118,43 +89,4 @@ fn is_application_active(app: &AppHandle) -> bool {
     app.webview_windows()
         .values()
         .any(|window| window.is_focused().unwrap_or(false))
-}
-
-fn focus_existing_temp_window(app: &tauri::AppHandle, md5: &str) -> bool {
-    let label = temp_window_label_for_md5(md5)
-        .unwrap_or_else(|| native_window_manager::temp_diagram_window_label(md5));
-
-    if let Some(window) = app.get_webview_window(&label) {
-        register_temp_window(md5.to_string());
-        let _ = window.set_focus();
-        return true;
-    }
-
-    remove_temp_window(&label);
-    false
-}
-
-fn register_temp_window(md5: String) {
-    let label = native_window_manager::temp_diagram_window_label(&md5);
-    with_temp_window_index(|index| {
-        index.insert(md5, label);
-    });
-}
-
-fn remove_temp_window(label: &str) {
-    with_temp_window_index(|index| {
-        index.retain(|_, window_label| window_label != label);
-    });
-}
-
-fn temp_window_label_for_md5(md5: &str) -> Option<String> {
-    with_temp_window_index(|index| index.get(md5).cloned())
-}
-
-fn with_temp_window_index<T>(f: impl FnOnce(&mut HashMap<String, String>) -> T) -> T {
-    let state = TEMP_WINDOW_INDEX.get_or_init(|| Mutex::new(HashMap::new()));
-    let mut index = state
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    f(&mut index)
 }

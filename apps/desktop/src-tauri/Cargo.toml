@@ -14,15 +14,28 @@ serde_json = "1.0"
 tauri-build = { version = "2.2.0", features = [] }
 
 [dependencies]
-arboard = "3.4"
+base64 = "0.22"
 md5 = "0.7"
+mermaid-core = { path = "../../../crates/mermaid-core" }
 percent-encoding = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tauri = { version = "2.5.1", features = [] }
+tauri = { version = "2.5.1", features = ["image-png", "tray-icon"] }
 tauri-plugin-dialog = "2.7.1"
+tauri-plugin-notification = "2"
 thiserror = "2.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder", "NSApplication"] }
+objc2-app-kit = { version = "0.3", features = [
+  "NSWindow",
+  "NSResponder",
+  "NSApplication",
+  "NSPasteboard",
+] }
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSString"] }
+
+# Only used where no native change counter is available; macOS reads the
+# pasteboard directly so it can poll metadata without touching the contents.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+arboard = "3.4"
