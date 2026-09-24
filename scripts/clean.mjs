@@ -7,6 +7,7 @@ const dryRun = process.argv.includes("--dry-run");
 
 const targets = [
   "node_modules",
+  "crates/target",
   "apps/desktop/node_modules",
   "apps/desktop/dist",
   "apps/desktop/src-tauri/target",

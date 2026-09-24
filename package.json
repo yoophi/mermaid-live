@@ -9,7 +9,9 @@
     "tauri": "pnpm --filter @mermaid-live/desktop tauri",
     "lint": "pnpm --filter @mermaid-live/desktop lint",
     "typecheck": "pnpm --filter @mermaid-live/desktop typecheck",
-    "clean": "node scripts/clean.mjs"
+    "clean": "node scripts/clean.mjs",
+    "generate:tray-icon": "node scripts/generate-tray-icon.mjs",
+    "install:agent": "node scripts/install-launch-agent.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
